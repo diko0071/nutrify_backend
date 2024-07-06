@@ -2,12 +2,12 @@ from django.db import models
 from useraccount.models import User
 from datetime import date
 
-class UserGoals(models.Choices):
+class UserGoals(models.TextChoices):
     LoseWeight = "Lose Weight", "Lose Weight"
-    MaintainWeight = "Gain Weight", "Maintain Weight"
+    MaintainWeight = "Maintain Weight", "Maintain Weight"
     GainWeight = "Gain Weight", "Gain Weight"
 
-class UserGender(models.Choices):
+class UserGender(models.TextChoices):
     Male = "Male", "Male"
     Female = "Female", "Female"
     Other = "Other", "Other"
