@@ -1,6 +1,15 @@
 from django.db import models
 from useraccount.models import User
 import uuid
+from django.utils import timezone
+
+
+
+class MealCategory(models.TextChoices):
+    BREAKFAST = 'Breakfast', 'Breakfast'
+    LUNCH = 'Lunch', 'Lunch'
+    DINNER = 'Dinner', 'Dinner'
+    SNACK = 'Snack', 'Snack'
 
 class MealItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -11,6 +20,8 @@ class MealItem(models.Model):
     carbs = models.PositiveIntegerField()
     proteins = models.PositiveIntegerField()
     fats = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
 
     def __str__(self):
         return self.name
@@ -18,8 +29,11 @@ class MealItem(models.Model):
 class Meal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100, choices=MealCategory.choices)
     meals = models.ManyToManyField(MealItem, related_name='meals')
-    
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
+
     def _sum_meal_attribute(self, attribute):
         return sum(getattr(meal, attribute) for meal in self.meals.all())
 
@@ -41,3 +55,12 @@ class Meal(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+class Prompts(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    system_message = models.TextField()
+    user_message = models.TextField()
+    response = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
