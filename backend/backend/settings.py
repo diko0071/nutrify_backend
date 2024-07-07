@@ -102,10 +102,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -118,8 +114,19 @@ DATABASES = {
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "timeout": 60,
+            "expiration_secs": 500,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -167,6 +174,10 @@ REST_AUTH = {
     "JWT_AUTH_HTTPONLY": False
 }
 
+
+AZURE_CONTAINER = os.environ.get("AZURE_CONTAINER")
+AZURE_ACCOUNT_NAME = os.environ.get("AZURE_ACCOUNT_NAME")
+AZURE_ACCOUNT_KEY = os.environ.get("AZURE_ACCOUNT_KEY")
 
 LANGUAGE_CODE = "en-us"
 

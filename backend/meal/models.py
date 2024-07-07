@@ -13,6 +13,8 @@ class MealCategory(models.TextChoices):
 
 class MealItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     calories = models.PositiveIntegerField(null=True, blank=True)
@@ -21,19 +23,17 @@ class MealItem(models.Model):
     proteins = models.PositiveIntegerField(null=True, blank=True)
     fats = models.PositiveIntegerField(null=True, blank=True)
     servings = models.PositiveIntegerField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)  
-    updated_at = models.DateTimeField(auto_now=True)  
 
     def __str__(self):
         return self.name
 
 class Meal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=100, choices=MealCategory.choices)
     meals = models.ManyToManyField(MealItem, related_name='meals')
-    created_at = models.DateTimeField(auto_now_add=True)  
-    updated_at = models.DateTimeField(auto_now=True)  
 
     def _sum_meal_attribute(self, attribute):
         return sum(getattr(meal, attribute) for meal in self.meals.all())
