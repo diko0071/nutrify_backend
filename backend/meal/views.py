@@ -46,7 +46,7 @@ def create_meal_item_ai(request):
         if picture and not description:
             image = default_storage.save(picture.name, ContentFile(picture.read()))
             image_url = default_storage.url(image)
-            meal_item = model.generate_meal_item_by_picture(image_url, image)
+            meal_item = model.generate_meal_item_by_picture(image_url, image, meal_id)
             serialized_meal_item = MealItemSerializer(meal_item)
             return Response(serialized_meal_item.data)
     
@@ -55,7 +55,7 @@ def create_meal_item_ai(request):
 
     try:
         if description and not picture:
-            meal_item = model.generate_meal_item_by_description(description)
+            meal_item = model.generate_meal_item_by_description(description, meal_id)
             return Response(meal_item)
 
     except Exception as e:

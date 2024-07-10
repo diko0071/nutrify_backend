@@ -53,7 +53,7 @@ class MealItemHandler:
     def __init__(self, user):
         self.user = user
 
-    def generate_meal_item_by_description(self, description):
+    def generate_meal_item_by_description(self, description, meal_id):
 
         generated_meal_item_data = openai_call(description, meal_item_by_description_prompt, self.user)
         print(generated_meal_item_data)
@@ -69,12 +69,13 @@ class MealItemHandler:
             proteins = generated_meal_item_data_json["proteins"],
             carbs = generated_meal_item_data_json["carbs"],
             fats = generated_meal_item_data_json["fats"],
+            meal_id = meal_id
         )
 
         return meal_item
 
 
-    def generate_meal_item_by_picture(self, image_url, image):
+    def generate_meal_item_by_picture(self, image_url, image, meal_id):
 
         generated_meal_item_data = openai_call('', meal_item_by_picture_prompt, self.user, image_url=image_url)
 
@@ -92,26 +93,7 @@ class MealItemHandler:
             proteins = generated_meal_item_data_json["proteins"],
             carbs = generated_meal_item_data_json["carbs"],
             fats = generated_meal_item_data_json["fats"],
-        )
-
-        return meal_item
-    
-    def add_meal_item_manual(self, name, servings):
-        human_message = f"Meal name: {name} \n Serving size: {servings}"
-        
-        generated_meal_item_data = openai_call(human_message, meal_item_manual_prompt, self.user)
-
-        generated_meal_item_data_json = json.loads(generated_meal_item_data)
-
-        meal_item = MealItem.objects.create(
-            user=self.user,
-            name=name,
-            description=generated_meal_item_data_json["description"],
-            servings=servings,
-            calories=generated_meal_item_data_json["calories"],
-            proteins=generated_meal_item_data_json["proteins"],
-            carbs=generated_meal_item_data_json["carbs"],
-            fats=generated_meal_item_data_json["fats"],
+            meal_id = meal_id
         )
 
         return meal_item
