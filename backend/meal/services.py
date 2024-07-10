@@ -5,28 +5,48 @@ from .models import Prompts, MealItem
 from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_manual_prompt
 from django.utils import timezone
 import json
+import base64
+import httpx
 
 
-def openai_call(human_message, system_message, user):
+def openai_call(human_message, system_message, user, image_url=None):
+    
     llm = ChatOpenAI(model_name="gpt-4o-2024-05-13", temperature=0, api_key=os.getenv("OPENAI_API_KEY"))
     chat = llm
-    messages = [
-    SystemMessage(
+    
+    if image_url is None:
+        messages = [
+            SystemMessage(
         content=f'{system_message}.'
     ),
-    HumanMessage(content=human_message),
-        ]
+        HumanMessage(content=human_message),
+            ]
+        
+        response = chat.invoke(messages)
+
+        Prompts.objects.create(
+            user=user,
+            system_message=system_message,
+            user_message=human_message,
+            response=response.content
+        )
+
+        return response.content 
     
-    response = chat.invoke(messages)
-
-    Prompts.objects.create(
-        user=user,
-        system_message=system_message,
-        user_message=human_message,
-        response=response.content
-    )
-
-    return response.content 
+    else:
+        image_data = base64.b64encode(httpx.get(image_url).content).decode("utf-8")
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": system_message},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
+                },
+            ],
+        )
+        response = chat.invoke([message])
+        
+        return response.content
 
 
 class MealItemHandler:
@@ -36,6 +56,7 @@ class MealItemHandler:
     def generate_meal_item_by_description(self, description):
 
         generated_meal_item_data = openai_call(description, meal_item_by_description_prompt, self.user)
+        print(generated_meal_item_data)
 
         generated_meal_item_data_json = json.loads(generated_meal_item_data)
         
@@ -43,38 +64,40 @@ class MealItemHandler:
             user=self.user,
             name = generated_meal_item_data_json["name"],
             description = description,
-            serving = generated_meal_item_data_json["serving"],
+            servings = generated_meal_item_data_json["servings"],
             calories = generated_meal_item_data_json["calories"],
-            protein = generated_meal_item_data_json["protein"],
+            proteins = generated_meal_item_data_json["proteins"],
             carbs = generated_meal_item_data_json["carbs"],
-            fat = generated_meal_item_data_json["fat"],
+            fats = generated_meal_item_data_json["fats"],
         )
 
-        return f"{meal_item.name} has been created"
+        return meal_item
 
 
-    def generate_meal_item_by_picture(self, picture):
+    def generate_meal_item_by_picture(self, image_url, image):
 
-        generated_meal_item_data = openai_call(picture, meal_item_by_picture_prompt, self.user)
+        generated_meal_item_data = openai_call('', meal_item_by_picture_prompt, self.user, image_url=image_url)
+
+        print(generated_meal_item_data)
 
         generated_meal_item_data_json = json.loads(generated_meal_item_data)
 
         meal_item = MealItem.objects.create(
             user=self.user,
             name = generated_meal_item_data_json["name"],
-            description = generated_meal_item_data_json["description"],
-            image = picture,
-            serving = generated_meal_item_data_json["serving"],
+            description = "",
+            image = image,
+            servings = generated_meal_item_data_json["servings"],
             calories = generated_meal_item_data_json["calories"],
-            protein = generated_meal_item_data_json["protein"],
+            proteins = generated_meal_item_data_json["proteins"],
             carbs = generated_meal_item_data_json["carbs"],
-            fat = generated_meal_item_data_json["fat"],
+            fats = generated_meal_item_data_json["fats"],
         )
 
-        return f"{meal_item.name} has been created"
+        return meal_item
     
-    def add_meal_item_manual(self, name, serving):
-        human_message = f"Meal name: {name} \n Serving size: {serving}"
+    def add_meal_item_manual(self, name, servings):
+        human_message = f"Meal name: {name} \n Serving size: {servings}"
         
         generated_meal_item_data = openai_call(human_message, meal_item_manual_prompt, self.user)
 
@@ -84,11 +107,11 @@ class MealItemHandler:
             user=self.user,
             name=name,
             description=generated_meal_item_data_json["description"],
-            serving=serving,
+            servings=servings,
             calories=generated_meal_item_data_json["calories"],
-            protein=generated_meal_item_data_json["protein"],
+            proteins=generated_meal_item_data_json["proteins"],
             carbs=generated_meal_item_data_json["carbs"],
-            fat=generated_meal_item_data_json["fat"],
+            fats=generated_meal_item_data_json["fats"],
         )
 
-        return f"{meal_item.name} has been created"
+        return meal_item

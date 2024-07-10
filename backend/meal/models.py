@@ -15,10 +15,10 @@ class MealItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)  
     updated_at = models.DateTimeField(auto_now=True)  
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=500)
     description = models.TextField(blank=True, null=True)
     calories = models.PositiveIntegerField(null=True, blank=True)
-    image = models.ImageField(upload_to='meal_items/', blank=True, null=True)
+    image = models.ImageField(max_length=1000, upload_to='meal_items/', blank=True, null=True)
     carbs = models.PositiveIntegerField(null=True, blank=True)
     proteins = models.PositiveIntegerField(null=True, blank=True)
     fats = models.PositiveIntegerField(null=True, blank=True)
@@ -34,25 +34,20 @@ class Meal(models.Model):
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=100, choices=MealCategory.choices)
     meals = models.ManyToManyField(MealItem, related_name='meals')
+    total_calories = models.PositiveIntegerField(null=True, blank=True)
+    total_proteins = models.PositiveIntegerField(null=True, blank=True)
+    total_carbs = models.PositiveIntegerField(null=True, blank=True)
+    total_fats = models.PositiveIntegerField(null=True, blank=True)
 
     def _sum_meal_attribute(self, attribute):
         return sum(getattr(meal, attribute) for meal in self.meals.all())
 
-    @property
-    def total_calories(self):
-        return self._sum_meal_attribute('calories')
-
-    @property
-    def total_carbs(self):
-        return self._sum_meal_attribute('carbs')
-
-    @property
-    def total_proteins(self):
-        return self._sum_meal_attribute('proteins')
-
-    @property
-    def total_fats(self):
-        return self._sum_meal_attribute('fats')
+    def save(self, *args, **kwargs):
+        self.total_calories = self._sum_meal_attribute('calories')
+        self.total_carbs = self._sum_meal_attribute('carbs')
+        self.total_proteins = self._sum_meal_attribute('proteins')
+        self.total_fats = self._sum_meal_attribute('fats')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
