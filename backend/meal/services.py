@@ -7,6 +7,7 @@ from django.utils import timezone
 import json
 import base64
 import httpx
+from .models import Meal
 
 
 def openai_call(human_message, system_message, user, image_url=None):

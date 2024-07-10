@@ -14,11 +14,12 @@ class MealCategory(models.TextChoices):
 class Meal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)  
+    meal_date = models.DateField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)  
     category = models.CharField(max_length=100, choices=MealCategory.choices)
 
     def __str__(self):
-        return self.name
+        return f"{self.category} - {self.meal_date}"
     
 class MealItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

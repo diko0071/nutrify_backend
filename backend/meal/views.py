@@ -13,52 +13,36 @@ from .services import MealItemHandler
 import json
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from azure.storage.blob import BlobServiceClient
-
 
 @api_view(['GET'])
-def get_meals(request):
+def get_meal_items_for_meal(request):
     user = request.user
-    meals = Meal.objects.filter(user=user)
-    serializer = MealSerializer(meals, many=True)
-    return Response(serializer.data)
-
-@api_view(['POST'])
-def create_meal(request):
-    user = request.user
-    meal = Meal.objects.create(user=user)
-    serializer = MealSerializer(meal)
-    return Response(serializer.data)
-
-@api_view(['GET'])
-def get_meal_items_for_meal(request, meal_id):
-    user = request.user
+    meal_id = request.data.get('meal_id')
     meal_items = MealItem.objects.filter(meal_id=meal_id, user=user)
     serializer = MealItemSerializer(meal_items, many=True)
     return Response(serializer.data)
 
-@api_view(['GET'])
-def get_meal_by_day(request):
-    user = request.user
-    day = request.query_params.get('day')
-    meal = Meal.objects.get(day=day, user=user)
-    serializer = MealSerializer(meal)
-    return Response(serializer.data)
-
 @api_view(['POST'])
-def create_meal_item_ai(request):
+def create_meal_item(request):
     user = request.user
+    date = request.data.get('date')
+    date = datetime.strptime(date, '%Y-%m-%d')
     model = MealItemHandler(user)
-    
-    meal_id = request.data.get('meal_id')
-    description = request.data.get('description')
-    picture = request.FILES.get('picture')
+    meal_category = request.data.get('meal_category')
 
     try:
-        if picture and not description:
-            image = default_storage.save(picture.name, ContentFile(picture.read()))
+        meal = Meal.objects.filter(category=meal_category, user=user).latest('meal_date')
+    except Meal.DoesNotExist:
+        meal = Meal.objects.create(category=meal_category, user=user, meal_date=date)
+
+    description = request.data.get('description')
+    image = request.FILES.get('image')
+
+    try:
+        if image and not description:
+            image = default_storage.save(image.name, ContentFile(image.read()))
             image_url = default_storage.url(image)
-            meal_item = model.generate_meal_item_by_picture(image_url, image, meal_id)
+            meal_item = model.generate_meal_item_by_picture(image_url, image, meal)
             serialized_meal_item = MealItemSerializer(meal_item)
             return Response(serialized_meal_item.data)
     
@@ -66,9 +50,10 @@ def create_meal_item_ai(request):
         return Response({"error": str(e)})
 
     try:
-        if description and not picture:
-            meal_item = model.generate_meal_item_by_description(description, meal_id)
-            return Response(meal_item)
+        if description and not image:
+            meal_item = model.generate_meal_item_by_description(description, meal)
+            serialized_meal_item = MealItemSerializer(meal_item)
+            return Response(serialized_meal_item.data)
 
     except Exception as e:
         return Response({"error": str(e)})
