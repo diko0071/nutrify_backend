@@ -16,8 +16,20 @@ from django.core.files.base import ContentFile
 from azure.storage.blob import BlobServiceClient
 
 
+@api_view(['GET'])
+def get_meals(request):
+    user = request.user
+    meals = Meal.objects.filter(user=user)
+    serializer = MealSerializer(meals, many=True)
+    return Response(serializer.data)
 
-# Get meal items for a meal and all meals for day
+@api_view(['POST'])
+def create_meal(request):
+    user = request.user
+    meal = Meal.objects.create(user=user)
+    serializer = MealSerializer(meal)
+    return Response(serializer.data)
+
 @api_view(['GET'])
 def get_meal_items_for_meal(request, meal_id):
     user = request.user
