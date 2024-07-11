@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'meal',
     'user_stat',
     'useraccount',
+    'telegram_integration',
     "rest_framework",
     "corsheaders",
     'rest_framework_simplejwt',
