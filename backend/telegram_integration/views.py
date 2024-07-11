@@ -46,8 +46,17 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
                 image_url = default_storage.url(image)
     
             meal_item = model.generate_meal_item_by_picture(image_url, image, meal)
-            serialized_meal_item = MealItemSerializer(meal_item)
-            return serialized_meal_item.data
+            serialized_meal_items = MealItemSerializer(meal_item, many=True)
+            
+            meal_details = []
+            total_calories = 0
+            for item in serialized_meal_items.data:
+                meal_details.append(f"Meal: {item['name']}, {item['calories']} calories, {item['servings']}g")
+                total_calories += item['calories']
+
+            meal_details_str = "\n".join(meal_details)
+            response_text = f"{meal_details_str}\n\nTotal: {total_calories} calories"
+            return response_text
     
     except Exception as e:
         return {"error": str(e)}
@@ -55,8 +64,18 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
     try:
         if description and not image_url:
             meal_item = model.generate_meal_item_by_description(description, meal)
-            serialized_meal_item = MealItemSerializer(meal_item)
-            return serialized_meal_item.data
+            serialized_meal_items = MealItemSerializer(meal_item, many=True)
+            meal_details = []
+            total_calories = 0
+            
+            for item in serialized_meal_items.data:
+                meal_details.append(f"Meal: {item['name']}, {item['calories']} calories, {item['servings']}g")
+                total_calories += item['calories']
+
+            meal_details_str = "\n".join(meal_details)
+            response_text = f"{meal_details_str}\n\nTotal: {total_calories} calories"
+            return response_text
+        
     except Exception as e:
         return {"error": str(e)}
 
@@ -92,7 +111,6 @@ def send_message(method, data):
 def delete_webhook(request):
     response = requests.get(telegram_bot_api_url + "deleteWebhook").json()
     return HttpResponse(f"{response}")
-
 
 user_states = {}
 
@@ -142,22 +160,21 @@ def handle_update(update, request):
         print(f"Retrieved meal_category {meal_category} for chat_id {chat_id}")
         if meal_category:
             photo = update['message']['photo'][-1]['file_id']
-            print(f'photo: {photo}')
             meal_item = create_meal_item_telegram(user, date, meal_category, image=photo)
+            print(f"meal_item: {meal_item}")
             send_message("sendMessage", {
                 'chat_id': chat_id,
-                'text': f'{meal_item["name"]} has been added to {meal_category}. It has {meal_item["calories"]} calories and serves {meal_item["servings"]}g',
+                'text': meal_item,
             })
     else:
         description = text
         meal_category = user_states.get(chat_id, {}).get('meal_category')
         if meal_category:
             meal_item = create_meal_item_telegram(user, date, meal_category, description=description)
-            meal_item['meal_category'] = meal_category
-            print(f"meal_item created: {meal_item}")
+            print(f"meal_item: {meal_item}")
             send_message("sendMessage", {
                 'chat_id': chat_id,
-                'text': f'{meal_item["name"]} has been added to {meal_category}. It has {meal_item["calories"]} calories and serves {meal_item["servings"]}g',
+                'text': meal_item,
             })
         else:
             send_message("sendMessage", {
