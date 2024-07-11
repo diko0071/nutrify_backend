@@ -22,5 +22,6 @@ urlpatterns = [
     path("api/", include("user_stat.urls")),
     path("api/", include("meal.urls")),
     path("auth/api/", include("useraccount.urls")),
+    path("api/", include("telegram_integration.urls")),
 ]
 
