@@ -3,3 +3,4 @@
 backend/backend/__pycache__/
 backend/meal/__pycache__/
 backend/user_stat/__pycache__/
+backend/telegram_integration/__pycache__/
