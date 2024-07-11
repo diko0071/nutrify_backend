@@ -29,6 +29,8 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
     except Meal.DoesNotExist:
         meal = Meal.objects.create(category=meal_category, user=user, meal_date=date)
 
+    image_url = None
+
     try:
         if image and not description:
             if isinstance(image, str):
@@ -42,7 +44,7 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
             else:
                 image = default_storage.save(image.name, ContentFile(image.read()))
                 image_url = default_storage.url(image)
-            
+    
             meal_item = model.generate_meal_item_by_picture(image_url, image, meal)
             serialized_meal_item = MealItemSerializer(meal_item)
             return serialized_meal_item.data
@@ -62,17 +64,13 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
 def download_telegram_photo(file_id):
     file_info_url = f"{telegram_bot_api_url}getFile?file_id={file_id}"
-    print(f'file_info_url: {file_info_url}')
     file_info_response = requests.get(file_info_url).json()
-    print(f'file_info_response: {file_info_response}')
 
     if not file_info_response['ok']:
         raise Exception(f"Error retrieving file info: {file_info_response}")
 
     file_path = file_info_response['result']['file_path']
-    print(f'file_path: {file_path}')
     file_url = f"https://api.telegram.org/file/bot{telegram_bot_token}/{file_path}"
-    print(f'file_url: {file_url}')
     file_response = requests.get(file_url)
 
     if file_response.status_code != 200:
@@ -148,16 +146,18 @@ def handle_update(update, request):
             meal_item = create_meal_item_telegram(user, date, meal_category, image=photo)
             send_message("sendMessage", {
                 'chat_id': chat_id,
-                'text': f'Meal item created: {meal_item}',
+                'text': f'{meal_item["name"]} has been added to {meal_category}. It has {meal_item["calories"]} calories and serves {meal_item["servings"]}g',
             })
     else:
         description = text
         meal_category = user_states.get(chat_id, {}).get('meal_category')
         if meal_category:
             meal_item = create_meal_item_telegram(user, date, meal_category, description=description)
+            meal_item['meal_category'] = meal_category
+            print(f"meal_item created: {meal_item}")
             send_message("sendMessage", {
                 'chat_id': chat_id,
-                'text': f'Meal item created: {meal_item}',
+                'text': f'{meal_item["name"]} has been added to {meal_category}. It has {meal_item["calories"]} calories and serves {meal_item["servings"]}g',
             })
         else:
             send_message("sendMessage", {

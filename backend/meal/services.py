@@ -80,8 +80,6 @@ class MealItemHandler:
 
         generated_meal_item_data = openai_call('', meal_item_by_picture_prompt, self.user, image_url=image_url)
 
-        print(generated_meal_item_data)
-
         generated_meal_item_data_json = json.loads(generated_meal_item_data)
 
         meal_item = MealItem.objects.create(
