@@ -14,7 +14,6 @@ from django.core.files.base import ContentFile
 from datetime import datetime
 from django.contrib.sessions.models import Session
 from user_stat.models import WeightLog
-import tempfile
 
 load_dotenv()
 
