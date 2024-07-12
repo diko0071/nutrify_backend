@@ -1,6 +1,6 @@
 from django.shortcuts import render
 import requests
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import os
 import json
@@ -109,9 +109,26 @@ def download_telegram_photo(file_id):
 
     return file_name
 
+def set_bot_commands():
+    commands = [
+        {"command": "log", "description": "Log your weight"},
+        {"command": "add", "description": "Add a meal"}
+    ]
+    response = requests.post(
+        telegram_bot_api_url + "setMyCommands",
+        json={"commands": commands}
+    )
+    if response.status_code != 200:
+        print(f"Failed to set bot commands: {response.content}")
+    return response.json()
+
 def setwebhook(request):
-  response = requests.post(telegram_bot_api_url + "setWebhook?url=" + telegram_app_api_url).json()
-  return HttpResponse(f"{response}")
+    response = requests.post(telegram_bot_api_url + "setWebhook?url=" + telegram_app_api_url).json()
+    set_bot_commands_response = set_bot_commands()
+    return JsonResponse({
+        "setWebhook_response": response,
+        "setBotCommands_response": set_bot_commands_response
+    })
 
 def send_message(method, data):
   return requests.post(telegram_bot_api_url + method, data)
