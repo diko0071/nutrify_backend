@@ -31,7 +31,7 @@ def create_meal_item(request):
     meal_category = request.data.get('meal_category')
 
     try:
-        meal = Meal.objects.filter(category=meal_category, user=user).latest('meal_date')
+        meal = Meal.objects.filter(category=meal_category, user=user, meal_date=date).latest('meal_date')
     except Meal.DoesNotExist:
         meal = Meal.objects.create(category=meal_category, user=user, meal_date=date)
 

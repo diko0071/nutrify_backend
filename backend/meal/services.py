@@ -61,7 +61,11 @@ class MealItemHandler:
         try:
             generated_meal_item_data_json = json.loads(generated_meal_item_data)
         except json.JSONDecodeError as e:
-            return f'Error decoding JSON: {e}'
+            generated_meal_item_data = openai_call(f'{description}, issue: {e}. Re-generate in right format', meal_item_by_description_prompt, self.user)
+            try:
+                generated_meal_item_data_json = json.loads(generated_meal_item_data)
+            except json.JSONDecodeError as e:
+                return f'Error decoding JSON after retry: {e}'
 
         meal_items = []
         for meal_item_data in generated_meal_item_data_json:
@@ -81,26 +85,29 @@ class MealItemHandler:
         return meal_items
 
     def generate_meal_item_by_picture(self, image_url, image, meal_id):
-
         generated_meal_item_data = openai_call('', meal_item_by_picture_prompt, self.user, image_url=image_url)
 
         try:
             generated_meal_item_data_json = json.loads(generated_meal_item_data)
         except json.JSONDecodeError as e:
-            return f'Error decoding JSON: {e}'
+            generated_meal_item_data = openai_call(f'issue: {e}. Re-generate in right format', meal_item_by_picture_prompt, self.user, image_url=image_url)
+            try:
+                generated_meal_item_data_json = json.loads(generated_meal_item_data)
+            except json.JSONDecodeError as e:
+                return f'Error decoding JSON after retry: {e}'
 
         meal_items = []
         for meal_item_data in generated_meal_item_data_json:
             meal_item = MealItem.objects.create(
                 user=self.user,
-                name = meal_item_data["name"],
-                image = image,
-                servings = meal_item_data["servings"],
-                calories = meal_item_data["calories"],
-                proteins = meal_item_data["proteins"],
-                carbs = meal_item_data["carbs"],
-                fats = meal_item_data["fats"],
-                meal_id = meal_id
+                name=meal_item_data["name"],
+                image=image,
+                servings=meal_item_data["servings"],
+                calories=meal_item_data["calories"],
+                proteins=meal_item_data["proteins"],
+                carbs=meal_item_data["carbs"],
+                fats=meal_item_data["fats"],
+                meal_id=meal_id
             )
             meal_items.append(meal_item)
 

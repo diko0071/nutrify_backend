@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 import json
 from useraccount.models import User
-from meal.models import Meal
+from meal.models import Meal, MealItem
 from meal.views import MealItemSerializer
 from meal.services import MealItemHandler
 from dotenv import load_dotenv
@@ -22,18 +22,55 @@ telegram_app_api_url = os.environ.get("TELEGRAM_APP_API_URL")
 telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 
+def today_meal_summary(user, date):
+    try:
+        meals = Meal.objects.filter(user=user, meal_date=date)
+        meal_summary = {}
+        total_today_calories = 0
+    
+        for meal in meals:
+            meal_items = MealItem.objects.filter(meal_id=meal.id)
+            category = meal.category
+            if category not in meal_summary:
+                meal_summary[category] = {
+                    'items': [],
+                    'total_calories': 0
+                }
+
+            for item in meal_items:
+                meal_summary[category]['items'].append(f"Meal: {item.name}, {item.calories} calories, {item.servings}g")
+                meal_summary[category]['total_calories'] += item.calories
+                total_today_calories += item.calories
+
+        summary_str = ""
+        for category, details in meal_summary.items():
+            summary_str += f"{category}\n"
+            summary_str += "\n".join(details['items'])
+            summary_str += f"\nTotal calories: {details['total_calories']}\n\n"
+        
+        summary_str += f"\nTotal calories for today: {total_today_calories}\n\n"
+        
+        return summary_str
+    except Exception as e:
+        return f"An error occurred while generating the meal summary: {str(e)}"
+
 def log_weight_telegram(user, date, weight):
     date = datetime.now()
     date_only = date.strftime('%Y-%m-%d')
-    weight_log = WeightLog.objects.create(user=user, timestamp=date, weight=weight)
-    return f"Weight logged: {weight}kg on {date_only}"
+    try:
+        weight_log = WeightLog.objects.create(user=user, timestamp=date, weight=weight)
+        return f"Weight logged: {weight}kg on {date_only}"
+    except Exception as e:
+        print(f"Error in log_weight_telegram: {str(e)}")
+        return f"An error occurred while logging the weight: {str(e)}"
 
 def create_meal_item_telegram(user, date, meal_category, description=None, image=None):
     date = datetime.strptime(date, '%Y-%m-%d')
+    
     model = MealItemHandler(user)
 
     try:
-        meal = Meal.objects.filter(category=meal_category, user=user).latest('meal_date')
+        meal = Meal.objects.filter(category=meal_category, user=user, meal_date=date).latest('meal_date')
     except Meal.DoesNotExist:
         meal = Meal.objects.create(category=meal_category, user=user, meal_date=date)
 
@@ -112,7 +149,8 @@ def download_telegram_photo(file_id):
 def set_bot_commands():
     commands = [
         {"command": "log", "description": "Log your weight"},
-        {"command": "add", "description": "Add a meal"}
+        {"command": "add", "description": "Add a meal"},
+        {"command": "meals", "description": "View today's meals"},
     ]
     response = requests.post(
         telegram_bot_api_url + "setMyCommands",
@@ -165,6 +203,13 @@ def handle_update(update, request):
             'text': 'Welcome to Nutrify!'
         })
 
+    elif text == '/meals':
+        print(f"Handling /meals command for user: {user.id}")
+        meal_summary = today_meal_summary(user, date)
+        send_message("sendMessage", {
+            'chat_id': chat_id,
+            'text': meal_summary
+        })
     elif text == '/log':
         send_message("sendMessage", {
             'chat_id': chat_id,
