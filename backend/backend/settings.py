@@ -53,7 +53,6 @@ ACCOUNT_EMAIL_VERIFICATION = None
 
 INSTALLED_APPS = [
     "django.contrib.admin",
-    "django_redis",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
