@@ -6,4 +6,5 @@ urlpatterns = [
     path('create_meal_item/', create_meal_item, name='create_meal_item'),
     path('update_meal_item/<int:meal_item_id>/', update_meal_item, name='update_meal_item'),
     path('delete_meal_item/<int:meal_item_id>/', delete_meal_item, name='delete_meal_item'),
+    path('get_all_meal_items/', get_all_meal_items, name='get_all_meal_items'),
 ] 

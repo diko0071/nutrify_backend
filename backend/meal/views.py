@@ -15,6 +15,13 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+def get_all_meal_items(request):
+    meal_items = MealItem.objects.all()
+    serializer = MealItemSerializer(meal_items, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
 def get_meal_items_for_meal(request):
     user = request.user
     meal_id = request.data.get('meal_id')

@@ -14,6 +14,7 @@ from django.core.files.base import ContentFile
 from datetime import datetime
 from django.contrib.sessions.models import Session
 from user_stat.models import WeightLog
+import tempfile
 
 load_dotenv()
 
@@ -78,19 +79,10 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
     try:
         if image and not description:
-            if isinstance(image, str):
-                try:
-                    image_file_name = download_telegram_photo(image)
-                    with open(image_file_name, 'rb') as image_file:
-                        image = default_storage.save(image_file_name, ContentFile(image_file.read()))
-                        image_url = default_storage.url(image)
-                except Exception as e:
-                    return {"error": f"Failed to download image from Telegram: {str(e)}"}
-            else:
-                image = default_storage.save(image.name, ContentFile(image.read()))
-                image_url = default_storage.url(image)
-    
-            meal_item = model.generate_meal_item_by_picture(image_url, image, meal)
+            filename, file_content = download_telegram_photo(image)
+            saved_path, image_url = save_file_to_storage(filename, file_content)
+
+            meal_item = model.generate_meal_item_by_picture(image_url, saved_path, meal)
             serialized_meal_items = MealItemSerializer(meal_item, many=True)
             
             meal_details = []
@@ -102,9 +94,8 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
             meal_details_str = "\n".join(meal_details)
             response_text = f"{meal_details_str}\n\nTotal: {total_calories} calories"
             return response_text
-    
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Error creating meal item: {str(e)}"}
 
     try:
         if description and not image_url:
@@ -134,17 +125,31 @@ def download_telegram_photo(file_id):
         raise Exception(f"Error retrieving file info: {file_info_response}")
 
     file_path = file_info_response['result']['file_path']
+    print(f"Retrieved file path: {file_path}")
+
+    if '..' in file_path or file_path.startswith('/'):
+        raise Exception(f"Invalid file path detected: {file_path}")
+
     file_url = f"https://api.telegram.org/file/bot{telegram_bot_token}/{file_path}"
     file_response = requests.get(file_url)
 
     if file_response.status_code != 200:
         raise Exception(f"Error downloading file: {file_response.content}")
 
-    file_name = file_path.split('/')[-1]
-    with open(file_name, 'wb') as file:
-        file.write(file_response.content)
+    filename = os.path.basename(file_path)
 
-    return file_name
+    if not filename or '..' in filename or filename.startswith('/'):
+        raise Exception(f"Invalid file name detected: {filename}")
+
+    return filename, file_response.content
+
+def save_file_to_storage(filename, file_content):
+    image_file = ContentFile(file_content)
+    saved_path = default_storage.save(filename, image_file)
+    image_url = default_storage.url(saved_path)
+
+    return saved_path, image_url
+
 
 def set_bot_commands():
     commands = [
