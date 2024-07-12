@@ -13,12 +13,20 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from datetime import datetime
 from django.contrib.sessions.models import Session
+from user_stat.models import WeightLog
 
 load_dotenv()
 
 telegram_bot_api_url = os.environ.get("TELEGRAM_BOT_API_URL")
 telegram_app_api_url = os.environ.get("TELEGRAM_APP_API_URL")
 telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+
+
+def log_weight_telegram(user, date, weight):
+    date = datetime.now()
+    date_only = date.strftime('%Y-%m-%d')
+    weight_log = WeightLog.objects.create(user=user, timestamp=date, weight=weight)
+    return f"Weight logged: {weight}kg on {date_only}"
 
 def create_meal_item_telegram(user, date, meal_category, description=None, image=None):
     date = datetime.strptime(date, '%Y-%m-%d')
@@ -120,6 +128,8 @@ def handle_update(update, request):
     chat_id = update['message']['chat']['id']
     text = update['message'].get('text')
 
+    user_state = user_states.get(chat_id, {}) 
+
     meal_category = user_states.get(chat_id, {}).get('meal_category')
 
     try:
@@ -137,6 +147,30 @@ def handle_update(update, request):
             'chat_id': chat_id,
             'text': 'Welcome to Nutrify!'
         })
+
+    elif text == '/log':
+        send_message("sendMessage", {
+            'chat_id': chat_id,
+            'text': 'Please enter your weight in kg.'
+        })
+        user_states[chat_id] = {'awaiting_weight': True}
+
+    elif user_states.get(chat_id, {}).get('awaiting_weight'):
+        try:
+            weight = float(text)
+            log_message = log_weight_telegram(user, date, weight)
+            send_message("sendMessage", {
+                'chat_id': chat_id,
+                'text': log_message,
+            })
+            user_states[chat_id].pop('awaiting_weight') 
+
+        except ValueError:
+            send_message("sendMessage", {
+                'chat_id': chat_id,
+                'text': 'Invalid weight. Please enter a valid number.'
+            })
+
     elif text == '/add':
         send_message("sendMessage", {
             'chat_id': chat_id,
@@ -146,9 +180,11 @@ def handle_update(update, request):
                 'one_time_keyboard': True
             })
         })
-    elif text in ['Breakfast', 'Lunch', 'Dinner', 'Snack']:
+        user_states[chat_id] = {'state': 'awaiting_meal_category'}
+
+    elif user_state.get('state') == 'awaiting_meal_category' and text in ['Breakfast', 'Lunch', 'Dinner', 'Snack']:
         meal_category = text
-        user_states[chat_id] = {'meal_category': meal_category}
+        user_states[chat_id] = {'state': 'awaiting_meal_details', 'meal_category': meal_category}
         print(f"Set meal_category to {text} for chat_id {chat_id}")
         send_message("sendMessage", {
             'chat_id': chat_id,
@@ -156,19 +192,22 @@ def handle_update(update, request):
         })
 
     elif 'photo' in update['message']:
-        meal_category = user_states.get(chat_id, {}).get('meal_category')
-        print(f"Retrieved meal_category {meal_category} for chat_id {chat_id}")
-        if meal_category:
-            photo = update['message']['photo'][-1]['file_id']
-            meal_item = create_meal_item_telegram(user, date, meal_category, image=photo)
-            print(f"meal_item: {meal_item}")
-            send_message("sendMessage", {
-                'chat_id': chat_id,
-                'text': meal_item,
-            })
-    else:
+        if user_state.get('state') == 'awaiting_meal_details':
+            meal_category = user_state.get('meal_category')
+            print(f"Retrieved meal_category {meal_category} for chat_id {chat_id}")
+            if meal_category:
+                photo = update['message']['photo'][-1]['file_id']
+                meal_item = create_meal_item_telegram(user, date, meal_category, image=photo)
+                print(f"meal_item: {meal_item}")
+                send_message("sendMessage", {
+                    'chat_id': chat_id,
+                    'text': meal_item,
+                })
+                user_states[chat_id] = {} 
+
+    elif user_state.get('state') == 'awaiting_meal_details':
         description = text
-        meal_category = user_states.get(chat_id, {}).get('meal_category')
+        meal_category = user_state.get('meal_category')
         if meal_category:
             meal_item = create_meal_item_telegram(user, date, meal_category, description=description)
             print(f"meal_item: {meal_item}")
@@ -176,6 +215,7 @@ def handle_update(update, request):
                 'chat_id': chat_id,
                 'text': meal_item,
             })
+            user_states[chat_id] = {}
         else:
             send_message("sendMessage", {
                 'chat_id': chat_id,
