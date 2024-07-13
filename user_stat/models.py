@@ -76,8 +76,14 @@ class UserMetrics(models.Model):
 
     def save(self, *args, **kwargs):
         self.age = self.calculate_age()
-        self.daily_calorie_goal = self.calculate_daily_calorie_goal()
-        self.calculate_macronutrient_goals()
+        if self.daily_calorie_goal is None:
+            self.daily_calorie_goal = self.calculate_daily_calorie_goal()
+        if self.daily_protein_goal is None:
+            self.daily_protein_goal = self.calculate_daily_protein_goal()
+        if self.daily_carb_goal is None:
+            self.daily_carb_goal = self.calculate_daily_carb_goal()
+        if self.daily_fat_goal is None:
+            self.daily_fat_goal = self.calculate_daily_fat_goal()
         super().save(*args, **kwargs)
 
 

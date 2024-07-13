@@ -126,6 +126,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 static/
+staticfiles/
 spr_db
 .idea/
 

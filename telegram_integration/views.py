@@ -13,7 +13,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from datetime import datetime
 from django.contrib.sessions.models import Session
-from user_stat.models import WeightLog
+from user_stat.models import WeightLog, UserMetrics
 
 load_dotenv()
 
@@ -47,9 +47,12 @@ def today_meal_summary(user, date):
             summary_str += f"{category}\n"
             summary_str += "\n".join(details['items'])
             summary_str += f"\nTotal calories: {details['total_calories']}\n\n"
-        
+
+        daily_calorie_goal = UserMetrics.objects.get(user=user).daily_calorie_goal
+
         summary_str += f"\nTotal calories for today: {total_today_calories}\n\n"
-        
+        summary_str += f"\nDaily calories: {daily_calorie_goal}\n\n"
+        summary_str += f"\nCalories remaining: {daily_calorie_goal - total_today_calories}\n\n"
         return summary_str
     except Exception as e:
         return f"An error occurred while generating the meal summary: {str(e)}"
@@ -58,8 +61,16 @@ def log_weight_telegram(user, date, weight):
     date = datetime.now()
     date_only = date.strftime('%Y-%m-%d')
     try:
-        weight_log = WeightLog.objects.create(user=user, timestamp=date, weight=weight)
-        return f"Weight logged: {weight}kg on {date_only}"
+        previous_weight = WeightLog.objects.filter(user=user).order_by('-timestamp').first()
+        new_weight_log = WeightLog.objects.create(user=user, timestamp=date, weight=weight)
+        if previous_weight:
+            if new_weight_log.weight < previous_weight.weight:
+                return f"Weight logged: {weight}kg on {date_only}\n\nYou have lost weight since the last log. Previous weight: {previous_weight.weight}kg"
+            else:
+                return f"Weight logged: {weight}kg on {date_only}\n\nYou have gained weight since the last log. Previous weight: {previous_weight.weight}kg"
+        else:
+            return f"Weight logged: {weight}kg on {date_only}\n\nNo previous weight data available."
+    
     except Exception as e:
         print(f"Error in log_weight_telegram: {str(e)}")
         return f"An error occurred while logging the weight: {str(e)}"
@@ -92,6 +103,8 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
             meal_details_str = "\n".join(meal_details)
             response_text = f"{meal_details_str}\n\nTotal: {total_calories} calories"
+            calories_remaining = UserMetrics.objects.get(user=user).daily_calorie_goal - total_calories
+            response_text += f"\n\nCalories remaining: {calories_remaining}"
             return response_text
     except Exception as e:
         return {"error": f"Error creating meal item: {str(e)}"}
@@ -109,6 +122,8 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
             meal_details_str = "\n".join(meal_details)
             response_text = f"{meal_details_str}\n\nTotal: {total_calories} calories"
+            calories_remaining = UserMetrics.objects.get(user=user).daily_calorie_goal - total_calories
+            response_text += f"\n\nCalories remaining: {calories_remaining}"
             return response_text
         
     except Exception as e:
