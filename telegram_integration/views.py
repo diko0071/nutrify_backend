@@ -14,7 +14,6 @@ from django.core.files.base import ContentFile
 from datetime import datetime
 from django.contrib.sessions.models import Session
 from user_stat.models import WeightLog, UserMetrics
-
 load_dotenv()
 
 telegram_bot_api_url = os.environ.get("TELEGRAM_BOT_API_URL")
@@ -238,7 +237,7 @@ def handle_update(update, request):
 
     elif user_states.get(chat_id, {}).get('awaiting_weight'):
         try:
-            weight = float(text)
+            weight = float(text.replace(',', '.'))
             log_message = log_weight_telegram(user, date, weight)
             send_message("sendMessage", {
                 'chat_id': chat_id,
