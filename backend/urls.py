@@ -23,5 +23,5 @@ urlpatterns = [
     path("api/", include("meal.urls")),
     path("auth/api/", include("useraccount.urls")),
     path("api/", include("telegram_integration.urls")),
+    path("api/", include("vector_store.urls")),
 ]
-

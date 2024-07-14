@@ -180,6 +180,9 @@ AZURE_CONTAINER = os.environ.get("AZURE_CONTAINER")
 AZURE_ACCOUNT_NAME = os.environ.get("AZURE_ACCOUNT_NAME")
 AZURE_ACCOUNT_KEY = os.environ.get("AZURE_ACCOUNT_KEY")
 
+
+QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
+
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
