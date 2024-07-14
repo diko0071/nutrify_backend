@@ -9,8 +9,9 @@ class VectorStoreActions:
     def __init__(self):
         self.client = QdrantClient(os.getenv('QDRANT_URL'))
 
-    def create_collection(self, collection_name: str, size: int):
+    def create_collection(self, collection_name: str):
         try:
+            size = 1536
             collection = self.client.create_collection(collection_name, vectors_config=VectorParams(size=size, distance=Distance.COSINE))
             return collection
         except Exception as e:

@@ -9,10 +9,19 @@ from rest_framework.decorators import api_view, permission_classes
 from .serializers import MealItemSerializer, MealSerializer
 from .models import MealItem, Meal
 from datetime import datetime, timedelta
-from .services import MealItemHandler
+from .services import MealItemHandler, AdvancedMealItemHandler
 import json
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+
+@api_view(['GET'])
+def get_recipe(request):
+    user = request.user
+    model = AdvancedMealItemHandler(user)
+    ingredients = ["Rice", "Spaghetti", "Chicken"]
+    recipe = model.calculate_recipe(ingredients)
+    return Response(recipe)
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

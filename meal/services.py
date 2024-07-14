@@ -127,8 +127,34 @@ class AdvancedMealItemHandler:
     def decompose_ingredients(self, meal_name):
         ... 
     
-    def calculate_recipe(self, meal_name, ingredients):
-        ... 
+    def calculate_recipe(self, ingredients: list):
+        api_key = os.getenv("USDA_API_KEY")
+        ingredients_meta = {}
+        for ingredient in ingredients:
+            request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&pageSize=1&api_key={api_key}'
+            response = httpx.get(request_url)
+            data = response.json()
+
+            nutrients = []
+            for food in data.get('foods', []):
+                food_info = {
+                    'description': food.get('description'),
+                    'packageWeight': food.get('packageWeight'),
+                    'servingSizeUnit': food.get('servingSizeUnit'),
+                    'servingSize': food.get('servingSize'),
+                    'nutrients': []
+                }
+                for nutrient in food.get('foodNutrients', []):
+                    food_info['nutrients'].append({
+                        'nutrientName': nutrient.get('nutrientName'),
+                        'nutrientNumber': nutrient.get('nutrientNumber'),
+                        'unitName': nutrient.get('unitName')
+                    })
+                nutrients.append(food_info)
+            ingredients_meta[ingredient] = nutrients
+
+        return ingredients_meta
+        
 
     def generate_calories(self, meal_name, ingredients, calculations):
         ... 

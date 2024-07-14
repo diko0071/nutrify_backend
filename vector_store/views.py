@@ -14,8 +14,7 @@ actions = VectorStoreActions()
 @permission_classes([AllowAny])
 def create_collection(request):
     collection_name = request.data.get('collection_name')
-    size = 1536
-    collection = actions.create_collection(collection_name, size)
+    collection = actions.create_collection(collection_name)
     return Response(collection)
 
 @api_view(['POST'])
