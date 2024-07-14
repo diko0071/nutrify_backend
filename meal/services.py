@@ -2,12 +2,17 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import os 
 from .models import Prompts, MealItem
-from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_manual_prompt
+from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_identifiyer_prompt, meal_item_ingridients_prompt
 from django.utils import timezone
 import json
 import base64
 import httpx
 from .models import Meal
+from vector_store.services import VectorStoreActions
+
+usda_api_key = os.getenv("USDA_API_KEY")
+
+vector_action = VectorStoreActions()
 
 
 def openai_call(human_message, system_message, user, image_url=None):
@@ -45,7 +50,7 @@ def openai_call(human_message, system_message, user, image_url=None):
                 },
             ],
         )
-        response = chat.invoke([message])
+        response = chat.invoke(message)
         
         return response.content
 
@@ -118,43 +123,112 @@ class AdvancedMealItemHandler:
     def __init__(self, user):
         self.user = user
 
-    def indetify_meal(self, data):
-        ... 
+    def indetify_meal(self, data, image = None):
+        if image is None:
+            response = openai_call(str(data), meal_item_identifiyer_prompt, self.user)
+        else:
+            response = openai_call('', meal_item_identifiyer_prompt, self.user, image_url=image)
+            print(response)
+        try:
+            response_json = json.loads(response)
+        
+        except json.JSONDecodeError as e:
+            return f'Error decoding JSON: {e}'
+
+        return response_json
 
     def query_similar_meal_items(self, meal_name):
         ...
 
-    def decompose_ingredients(self, meal_name):
-        ... 
-    
-    def calculate_recipe(self, ingredients: list):
-        api_key = os.getenv("USDA_API_KEY")
-        ingredients_meta = {}
-        for ingredient in ingredients:
-            request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&pageSize=1&api_key={api_key}'
-            response = httpx.get(request_url)
-            data = response.json()
+    def decompose_ingredients(self, meal_name, servings):
+        response = openai_call(f'Meal name: {meal_name}, servings: {servings}', meal_item_ingridients_prompt, self.user)
+        try:
+            response_json = json.loads(response)
+        except json.JSONDecodeError as e:
+            return f'Error decoding JSON: {e}'
 
-            nutrients = []
-            for food in data.get('foods', []):
-                food_info = {
-                    'description': food.get('description'),
-                    'packageWeight': food.get('packageWeight'),
-                    'servingSizeUnit': food.get('servingSizeUnit'),
-                    'servingSize': food.get('servingSize'),
-                    'nutrients': []
-                }
-                for nutrient in food.get('foodNutrients', []):
-                    food_info['nutrients'].append({
-                        'nutrientName': nutrient.get('nutrientName'),
-                        'nutrientNumber': nutrient.get('nutrientNumber'),
-                        'unitName': nutrient.get('unitName')
-                    })
-                nutrients.append(food_info)
-            ingredients_meta[ingredient] = nutrients
+        return response_json
+    
+    def retrieve_and_convert_ingredients_meta(self, ingredient: str, desired_serving_size: float):
+        ingredients_meta = {}
+        
+        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&pageSize=1&api_key={usda_api_key}'
+        response = httpx.get(request_url)
+        data = response.json()
+
+        for food in data.get('foods', []):
+            food_info = {
+                'description': food.get('description'),
+                'servingSizeUnit': food.get('servingSizeUnit'),
+                'originalServingSize': food.get('servingSize'), 
+                'desiredServingSize': desired_serving_size,
+                'foodCategory': food.get('foodCategory'),
+                'nutrients': []
+            }
+            
+            serving_size = food_info['originalServingSize']
+            conversion_factor = desired_serving_size / serving_size
+            
+            converted_nutrients = []
+            for nutrient in food.get('foodNutrients', []):
+                nutrient_name = nutrient['nutrientName']
+                original_value = nutrient['value']
+                converted_value = original_value * conversion_factor
+                converted_nutrients.append({
+                    'nutrientName': nutrient_name,
+                    'unitName': nutrient['unitName'],
+                    'originalValue': round(original_value, 2),
+                    'desiredValue': round(converted_value, 2)
+                })
+            
+            food_info['nutrients'] = converted_nutrients
+            ingredients_meta[ingredient] = food_info
 
         return ingredients_meta
+    
+    def calculate_calories_by_meal_name(self, data, input_type):
+        if input_type == 'image':
+            idetified_meal = self.indetify_meal(data = '', image = data)
+        else:
+            idetified_meal = self.indetify_meal(data)
         
+        meal_name = idetified_meal['meal_name']
+        serving_size = idetified_meal['serving_size']
+        ingredients = self.decompose_ingredients(meal_name, serving_size)['ingredients']
 
-    def generate_calories(self, meal_name, ingredients, calculations):
-        ... 
+        total_nutrients = {}
+        ingredients_list = []
+
+        for ingredient in ingredients:
+            ingredient_name = ingredient['ingredient']
+            desired_serving_size = ingredient['servingSize']
+            ingredient_meta = self.retrieve_and_convert_ingredients_meta(ingredient_name, desired_serving_size)
+            
+            for meta in ingredient_meta.values():
+                ingredients_list.append({
+                    'ingredient': ingredient_name,
+                    'description': meta['description'],
+                    'servingSizeUnit': meta['servingSizeUnit'],
+                    'desiredServingSize': meta['desiredServingSize'],
+                    'foodCategory': meta['foodCategory'],
+                    'nutrients': meta['nutrients']
+                })
+
+                for nutrient in meta['nutrients']:
+                    nutrient_name = nutrient['nutrientName']
+                    desired_value = nutrient['desiredValue']
+
+                    if nutrient_name not in total_nutrients:
+                        total_nutrients[nutrient_name] = 0
+
+                    total_nutrients[nutrient_name] += desired_value
+
+        meal_summary = {
+            'meal_name': meal_name,
+            'servingSize': serving_size,
+            'ingredients': ingredients,
+            'total_nutrients': total_nutrients,
+            'ingredients_details': ingredients_list
+        }
+
+        return meal_summary

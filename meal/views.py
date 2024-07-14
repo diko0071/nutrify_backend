@@ -18,8 +18,14 @@ from django.core.files.base import ContentFile
 def get_recipe(request):
     user = request.user
     model = AdvancedMealItemHandler(user)
-    ingredients = ["Rice", "Spaghetti", "Chicken"]
-    recipe = model.calculate_recipe(ingredients)
+    data = request.data
+    input_type = 'description'
+    if 'image' in request.data:
+       input_type = 'image'
+       image = request.FILES.get('image')
+       recipe = model.calculate_calories_by_meal_name(image, input_type)
+    else:
+        recipe = model.calculate_calories_by_meal_name(data, input_type)
     return Response(recipe)
 
 

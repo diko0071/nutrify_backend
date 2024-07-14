@@ -9,6 +9,9 @@ class VectorStoreActions:
     def __init__(self):
         self.client = QdrantClient(os.getenv('QDRANT_URL'))
 
+    def get_collections(self, collection_name: str):
+        return self.client.get_collection(collection_name)
+
     def create_collection(self, collection_name: str):
         try:
             size = 1536
@@ -31,8 +34,13 @@ class VectorStoreActions:
                 points=points
             )
             return operation_info
+        
         except Exception as e:
             raise Exception(f"Error adding vectors: {e}")
+        
+    def convert_text_to_vector_and_add_to_collection(self, collection_name: str, text: str, payload: dict):
+        vector = self.generate_vector(text)
+        self.add_vector_to_collection(collection_name, vector, payload)
         
     def run_vector_search_query_raw(self, collection_name: str, query_vector: list[float], limit: int = 10):
         try:
