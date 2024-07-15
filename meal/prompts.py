@@ -131,23 +131,23 @@ Glirrled chicken with rice:
 {
     "ingredients": [
         {
-            "ingredient": "Chicken, broilers or fryers, breast, meat only, raw",
+            "ingredient": "Chicken",
             "servingSize": 500
         },
         {
-            "ingredient": "Oil, vegetable, salad or cooking",
+            "ingredient": "Oil",
             "servingSize": 28
         },
         {
-            "ingredient": "Garlic, raw",
+            "ingredient": "Garlic",
             "servingSize": 9
         },
         {
-            "ingredient": "Ginger root, raw",
+            "ingredient": "Ginger",
             "servingSize": 5
         },
         {
-            "ingredient": "Soy sauce made from soy (tamari)",
+            "ingredient": "Soy Sauce",
             "servingSize": 60
         },
         {
@@ -155,11 +155,11 @@ Glirrled chicken with rice:
             "servingSize": 85
         },
         {
-            "ingredient": "Vinegar, rice",
+            "ingredient": "Vinegar",
             "servingSize": 30
         },
         {
-            "ingredient": "Spices, pepper, red or cayenne",
+            "ingredient": "Pepper",
             "servingSize": 6
         },
         {
@@ -167,15 +167,15 @@ Glirrled chicken with rice:
             "servingSize": 16
         },
         {
-            "ingredient": "Onions, spring or scallions (includes tops and bulb), raw",
+            "ingredient": "Onions",
             "servingSize": 25
         },
         {
-            "ingredient": "Sesame seeds, whole, dried",
+            "ingredient": "Sesame Seeds",
             "servingSize": 9
         },
         {
-            "ingredient": "Rice, white, long-grain, regular, cooked",
+            "ingredient": "White Rice",
             "servingSize": 200
         }
     ]
@@ -188,23 +188,23 @@ Cheesburger
 {
     "ingredients": [
         {
-            "ingredient": "Beef, ground, 80% lean meat / 20% fat, patty, cooked, broiled",
+            "ingredient": "Beef",
             "servingSize": 100 
         },
         {
-            "ingredient": "Buns, hamburger or hotdog, white",
+            "ingredient": "Buns",
             "servingSize": 50
         },
         {
-            "ingredient": "Cheese, pasteurized process, American, prepared slice, reduced fat",
+            "ingredient": "Cheese Parmezan",
             "servingSize": 20
         },
         {
-            "ingredient": "Pickles, cucumber, sour, low sodium",
+            "ingredient": "Pickles",
             "servingSize": 10
         },
         {
-            "ingredient": "Onions, raw",
+            "ingredient": "Onions",
             "servingSize": 7
         },
         {
@@ -212,11 +212,11 @@ Cheesburger
             "servingSize": 15
         },
         {
-            "ingredient": "Mustard, prepared, yellow",
+            "ingredient": "Mustard",
             "servingSize": 5
         },
         {
-            "ingredient": "Salt, table",
+            "ingredient": "Salt",
             "servingSize": 1
         }
     ]

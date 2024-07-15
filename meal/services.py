@@ -150,39 +150,57 @@ class AdvancedMealItemHandler:
         return response_json
     
     def retrieve_and_convert_ingredients_meta(self, ingredient: str, desired_serving_size: float):
+        import numpy as np
+
         ingredients_meta = {}
         
-        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&pageSize=1&api_key={usda_api_key}'
+        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&api_key={usda_api_key}'
         response = httpx.get(request_url)
         data = response.json()
 
-        for food in data.get('foods', []):
-            food_info = {
-                'description': food.get('description'),
-                'servingSizeUnit': food.get('servingSizeUnit'),
-                'originalServingSize': food.get('servingSize'), 
-                'desiredServingSize': desired_serving_size,
-                'foodCategory': food.get('foodCategory'),
-                'nutrients': []
-            }
-            
-            serving_size = food_info['originalServingSize']
-            conversion_factor = desired_serving_size / serving_size
-            
-            converted_nutrients = []
+        all_foods = [food for food in data.get('foods', []) if food.get('servingSizeUnit') == 'g']
+        
+        if not all_foods:
+            return ingredients_meta
+
+        food_info = {
+            'description': ingredient,
+            'servingSizeUnit': 'g',
+            'desiredServingSize': desired_serving_size,
+            'foodCategory': 'Aggregated',
+            'nutrients': []
+        }
+
+        nutrients_data = {}
+        serving_sizes = []
+
+        for food in all_foods:
+            serving_sizes.append(food['servingSize'])
             for nutrient in food.get('foodNutrients', []):
                 nutrient_name = nutrient['nutrientName']
-                original_value = nutrient['value']
-                converted_value = original_value * conversion_factor
-                converted_nutrients.append({
-                    'nutrientName': nutrient_name,
-                    'unitName': nutrient['unitName'],
-                    'originalValue': round(original_value, 2),
-                    'desiredValue': round(converted_value, 2)
-                })
-            
-            food_info['nutrients'] = converted_nutrients
-            ingredients_meta[ingredient] = food_info
+                if nutrient_name not in nutrients_data:
+                    nutrients_data[nutrient_name] = []
+                nutrients_data[nutrient_name].append(nutrient['value'])
+
+        mean_serving_size = np.mean(serving_sizes)
+        conversion_factor = desired_serving_size / mean_serving_size
+
+        for nutrient_name, values in nutrients_data.items():
+            values = np.array(values)
+            lower_bound = np.percentile(values, 5)
+            upper_bound = np.percentile(values, 95)
+            filtered_values = values[(values >= lower_bound) & (values <= upper_bound)]
+            mean_value = np.mean(filtered_values)
+            converted_value = mean_value * conversion_factor
+
+            food_info['nutrients'].append({
+                'nutrientName': nutrient_name,
+                'unitName': 'g',
+                'originalValue': round(mean_value, 2),
+                'desiredValue': round(converted_value, 2)
+            })
+
+        ingredients_meta[ingredient] = food_info
 
         return ingredients_meta
     
