@@ -226,5 +226,7 @@ You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add
 
 servingSize — in in the gram!!!
 
-Generate only ingredients and serving size. NOT MORE THAN 5 ingredients.
+Generate only ingredients and serving size. NOT MORE THAN 7 ingredients.
+
+Assume that serving size ONLY for this dish at all.
 """

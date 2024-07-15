@@ -151,14 +151,16 @@ class AdvancedMealItemHandler:
     
     def retrieve_and_convert_ingredients_meta(self, ingredient: str, desired_serving_size: float):
         import numpy as np
+        import math
 
         ingredients_meta = {}
+        default_serving_size = 100.0
         
-        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&dataType=Branded&api_key={usda_api_key}'
+        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&pageSize=3&dataType=Foundation&api_key={usda_api_key}'
         response = httpx.get(request_url)
         data = response.json()
 
-        all_foods = [food for food in data.get('foods', []) if food.get('servingSizeUnit') == 'g']
+        all_foods = data.get('foods', [])
         
         if not all_foods:
             return ingredients_meta
@@ -175,30 +177,32 @@ class AdvancedMealItemHandler:
         serving_sizes = []
 
         for food in all_foods:
-            serving_sizes.append(food['servingSize'])
+            serving_sizes.append(food.get('servingSize', default_serving_size))
             for nutrient in food.get('foodNutrients', []):
                 nutrient_name = nutrient['nutrientName']
-                if nutrient_name not in nutrients_data:
-                    nutrients_data[nutrient_name] = []
-                nutrients_data[nutrient_name].append(nutrient['value'])
-
-        mean_serving_size = np.mean(serving_sizes)
-        conversion_factor = desired_serving_size / mean_serving_size
+                if 'value' in nutrient:
+                    if nutrient_name not in nutrients_data:
+                        nutrients_data[nutrient_name] = []
+                    nutrients_data[nutrient_name].append(nutrient['value'])
+                
+        conversion_factor = desired_serving_size / default_serving_size
 
         for nutrient_name, values in nutrients_data.items():
-            values = np.array(values)
-            lower_bound = np.percentile(values, 5)
-            upper_bound = np.percentile(values, 95)
-            filtered_values = values[(values >= lower_bound) & (values <= upper_bound)]
-            mean_value = np.mean(filtered_values)
-            converted_value = mean_value * conversion_factor
+            if values: 
+                values = np.array(values)
+                lower_bound = np.percentile(values, 5)
+                upper_bound = np.percentile(values, 95)
+                filtered_values = values[(values >= lower_bound) & (values <= upper_bound)]
+                mean_value = np.mean(filtered_values)
+                converted_value = mean_value * conversion_factor
 
-            food_info['nutrients'].append({
-                'nutrientName': nutrient_name,
-                'unitName': 'g',
-                'originalValue': round(mean_value, 2),
-                'desiredValue': round(converted_value, 2)
-            })
+                if not math.isnan(converted_value) and not math.isinf(converted_value):
+                    food_info['nutrients'].append({
+                        'nutrientName': nutrient_name,
+                        'unitName': 'g',
+                        'originalValue': round(mean_value, 2),
+                        'desiredValue': round(converted_value, 2)
+                    })
 
         ingredients_meta[ingredient] = food_info
 
