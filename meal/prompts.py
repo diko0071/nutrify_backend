@@ -230,3 +230,51 @@ Generate only ingredients and serving size. NOT MORE THAN 7 ingredients.
 
 Assume that serving size ONLY for this dish at all.
 """
+
+missing_ingredient_prompt = """
+You MUST generate the MOST approximate data for given ingredient in structure:
+
+{
+    "ingredient": [Take from input],
+    "description": [Take from input],
+    "servingSizeUnit": "g",
+    "desiredServingSize": [Take from input],
+    "foodCategory": "Aggregated",
+    "nutrients": [
+        {
+            "nutrientName": "Energy (Atwater General Factors)",
+            "unitName": "g",
+            "originalValue": 0.0,
+            "desiredValue": 0.0
+        },
+        {
+            "nutrientName": "Energy (Atwater Specific Factors)",
+            "unitName": "g",
+            "originalValue": 0.0,
+            "desiredValue": 0.0
+        },
+        {
+            "nutrientName": "Protein",
+            "unitName": "g",
+            "originalValue": 0.0,
+            "desiredValue": 0.0
+        },
+        {
+            "nutrientName": "Carbohydrate, by difference",
+            "unitName": "g",
+            "originalValue": 0.0,
+            "desiredValue": 0.0
+        },
+        {
+            "nutrientName": "Total lipid (fat)",
+            "unitName": "g",
+            "originalValue": 0.0,
+            "desiredValue": 0.0
+        }
+    ]
+}
+
+Make as close prediction as possible to get close values to the real values.
+
+You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.
+"""

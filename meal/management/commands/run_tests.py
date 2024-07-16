@@ -20,7 +20,6 @@ class Command(BaseCommand):
             result = {
                 "meal_name": recipe.get("meal_name", ""),
                 "serving_size": recipe.get("servingSize", ""),
-                "energy": recipe["total_nutrients"].get("Energy", ""),
                 "energy_atwater_general": recipe["total_nutrients"].get("Energy (Atwater General Factors)", ""),
                 "energy_atwater_specific": recipe["total_nutrients"].get("Energy (Atwater Specific Factors)", ""),
                 "protein": recipe["total_nutrients"].get("Protein", ""),
@@ -55,7 +54,7 @@ class Command(BaseCommand):
             fieldnames = [
                 'test_run_id', 'question', 
                 'serving_size_generated', 'serving_size_expected',
-                'calories_generated', 'calories_expected', 
+                'calories_generated_agf', 'calories_generated_asf', 'calories_expected', 
                 'proteins_generated', 'proteins_expected', 
                 'carbs_generated', 'carbs_expected', 
                 'fats_generated', 'fats_expected', 
@@ -83,7 +82,8 @@ class Command(BaseCommand):
                     'question': question,
                     'serving_size_generated': answer['serving_size'],
                     'serving_size_expected': row['serving_size'],
-                    'calories_generated': answer['energy_atwater_specific'],
+                    'calories_generated_agf': answer['energy_atwater_general'],
+                    'calories_generated_asf': answer['energy_atwater_specific'],
                     'calories_expected': row['calories'],
                     'proteins_generated': answer['protein'],
                     'proteins_expected': row['proteins'],

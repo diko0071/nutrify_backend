@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import os 
 from .models import Prompts, MealItem
-from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_identifiyer_prompt, meal_item_ingridients_prompt
+from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_identifiyer_prompt, meal_item_ingridients_prompt, missing_ingredient_prompt
 from django.utils import timezone
 import json
 import base64
@@ -163,14 +163,15 @@ class AdvancedMealItemHandler:
         all_foods = data.get('foods', [])
         
         if not all_foods:
-            return ingredients_meta
+            return {'missing': True, 'ingredient': ingredient, 'desired_serving_size': desired_serving_size}
 
         food_info = {
             'description': ingredient,
             'servingSizeUnit': 'g',
             'desiredServingSize': desired_serving_size,
             'foodCategory': 'Aggregated',
-            'nutrients': []
+            'nutrients': [],
+            'missing': False
         }
 
         nutrients_data = {}
@@ -188,15 +189,21 @@ class AdvancedMealItemHandler:
         conversion_factor = desired_serving_size / default_serving_size
 
         for nutrient_name, values in nutrients_data.items():
-            if values: 
-                values = np.array(values)
-                lower_bound = np.percentile(values, 5)
-                upper_bound = np.percentile(values, 95)
-                filtered_values = values[(values >= lower_bound) & (values <= upper_bound)]
-                mean_value = np.mean(filtered_values)
-                converted_value = mean_value * conversion_factor
+            if nutrient_name in [
+                'Energy (Atwater General Factors)', 
+                'Energy (Atwater Specific Factors)', 
+                'Protein', 
+                'Carbohydrate, by difference', 
+                'Total lipid (fat)'
+            ]:
+                if values: 
+                    values = np.array(values)  
+                    mean_value = np.mean(values)  
+                    converted_value = mean_value * conversion_factor  
+                else:
+                    return {'missing': True, 'ingredient': ingredient, 'desired_serving_size': desired_serving_size}
 
-                if not math.isnan(converted_value) and not math.isinf(converted_value):
+                if not math.isnan(converted_value) and not math.isinf(converted_value):  
                     food_info['nutrients'].append({
                         'nutrientName': nutrient_name,
                         'unitName': 'g',
@@ -209,7 +216,6 @@ class AdvancedMealItemHandler:
         return ingredients_meta
     
     def calculate_calories_by_meal_name(self, data, input_type):
-        ## Fix issue with covnesion factor and make it dymanic for serving size on ingriditents level.
         if input_type == 'image':
             idetified_meal = self.indetify_meal(data = '', image = data)
         else:
@@ -227,6 +233,16 @@ class AdvancedMealItemHandler:
             desired_serving_size = ingredient['servingSize']
             ingredient_meta = self.retrieve_and_convert_ingredients_meta(ingredient_name, desired_serving_size)
             
+            if 'missing' in ingredient_meta and ingredient_meta['missing']:
+                missing_ingredient_data = openai_call(f'Ingredient: {ingredient_name}, serving size: {desired_serving_size}', missing_ingredient_prompt, self.user)
+                try:
+                    missing_ingredient_data_json = json.loads(missing_ingredient_data)
+                except json.JSONDecodeError as e:
+                    return f'Error decoding JSON: {e}'
+                
+                ingredient_meta = {ingredient_name: missing_ingredient_data_json}
+                ingredient_meta[ingredient_name]['missing'] = True
+
             for meta in ingredient_meta.values():
                 ingredients_list.append({
                     'ingredient': ingredient_name,
@@ -234,7 +250,8 @@ class AdvancedMealItemHandler:
                     'servingSizeUnit': meta['servingSizeUnit'],
                     'desiredServingSize': meta['desiredServingSize'],
                     'foodCategory': meta['foodCategory'],
-                    'nutrients': meta['nutrients']
+                    'nutrients': meta['nutrients'],
+                    'missing': meta.get('missing', False)
                 })
 
                 for nutrient in meta['nutrients']:
