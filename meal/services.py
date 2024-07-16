@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import os 
 from .models import Prompts, MealItem
-from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_identifiyer_prompt, meal_item_ingridients_prompt, missing_ingredient_prompt
+from .prompts import meal_item_by_description_prompt, meal_item_by_picture_prompt, meal_item_identifiyer_prompt, meal_item_ingridients_prompt, missing_ingredient_prompt, usda_chooser_prompt
 from django.utils import timezone
 import json
 import base64
@@ -148,6 +148,53 @@ class AdvancedMealItemHandler:
             return f'Error decoding JSON: {e}'
 
         return response_json
+
+    def handle_usda_response(self, usda_response, ingredient):
+        nutrient_names = [
+            'Energy (Atwater General Factors)', 
+            'Energy (Atwater Specific Factors)', 
+            'Protein', 
+            'Carbohydrate, by difference', 
+            'Total lipid (fat)'
+        ]
+        
+        ingredients_info = [
+            {
+                'description': food['description'],
+                'nutrients': [
+                    {
+                        'nutrientName': nutrient['nutrientName'],
+                        'value': nutrient['value']
+                    }
+                    for nutrient in food.get('foodNutrients', [])
+                    if nutrient['nutrientName'] in nutrient_names
+                ]
+            }
+            for food in usda_response.get('foods', [])
+        ]
+        
+        chooser_response = openai_call(
+            f'Initial ingredient: {ingredient}, ingredients to choose from: {json.dumps(ingredients_info)}', 
+            usda_chooser_prompt, 
+            self.user
+        )
+
+        try:
+            chooser_response_json = json.loads(chooser_response)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error decoding JSON from usda_ingridient_chooser: {e}")
+        
+        if not isinstance(chooser_response_json, list):
+            chooser_response_json = [chooser_response_json]
+        
+        chosen_descriptions = {ingredient['description'] for ingredient in chooser_response_json}
+        
+        filtered_ingredients = [
+            food for food in usda_response.get('foods', [])
+            if food['description'] in chosen_descriptions
+        ]
+
+        return filtered_ingredients
     
     def retrieve_and_convert_ingredients_meta(self, ingredient: str, desired_serving_size: float):
         import numpy as np
@@ -160,9 +207,9 @@ class AdvancedMealItemHandler:
         response = httpx.get(request_url)
         data = response.json()
 
-        all_foods = data.get('foods', [])
+        filtered_ingredients = self.handle_usda_response(data, ingredient)
         
-        if not all_foods:
+        if not filtered_ingredients:
             return {'missing': True, 'ingredient': ingredient, 'desired_serving_size': desired_serving_size}
 
         food_info = {
@@ -177,7 +224,7 @@ class AdvancedMealItemHandler:
         nutrients_data = {}
         serving_sizes = []
 
-        for food in all_foods:
+        for food in filtered_ingredients:
             serving_sizes.append(food.get('servingSize', default_serving_size))
             for nutrient in food.get('foodNutrients', []):
                 nutrient_name = nutrient['nutrientName']

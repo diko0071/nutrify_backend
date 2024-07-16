@@ -278,3 +278,27 @@ Make as close prediction as possible to get close values to the real values.
 
 You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.
 """
+
+
+usda_chooser_prompt = """
+You USDA Ingridient chooser, you must choose the most appropriate ingridient from USDA list. Check the initial meal and given list of ingidient and choose the most appropriate one. 
+
+Output MUST be:
+```
+ {
+    "description": "[Value based on ingridient description]"
+ }
+ ```
+
+Example, if initail ingridient milk, then DO NOT need to choose cheese. You MUST most similar to milk option. 
+```
+{
+    "description": "Almond milk, unsweetened, plain, refrigerated"
+}
+```
+
+
+Consider and prefer more options that have more nutrients filled and make sense.
+
+You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.
+"""
