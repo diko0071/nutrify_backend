@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 question = f"Meal name: {row['meal_name']}, Serving size: {row['serving_size']}"
                 
                 answer = generate_mealitem_meta(question)
-                answer_str = f"Meal name: {answer['meal_name']}, Serving size: {answer['serving_size']}, Calories: {answer['energy']}, Proteins: {answer['protein']}, Carbs: {answer['carbs']}, Fats: {answer['fats']}"
+                answer_str = f"Meal name: {answer['meal_name']}, Serving size: {answer['serving_size']}, Calories: {answer['energy_atwater_specific']}, Proteins: {answer['protein']}, Carbs: {answer['carbs']}, Fats: {answer['fats']}"
                 
                 expected_answer = f"Calories: {row['calories']}, Proteins: {row['proteins']}, Carbs: {row['carbs']}, Fats: {row['fats']}"
                 
