@@ -156,7 +156,7 @@ class AdvancedMealItemHandler:
         ingredients_meta = {}
         default_serving_size = 100.0
         
-        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&pageSize=3&dataType=Foundation&api_key={usda_api_key}'
+        request_url = f'https://api.nal.usda.gov/fdc/v1/foods/search?query={ingredient}&pageSize=5&dataType=Foundation&api_key={usda_api_key}'
         response = httpx.get(request_url)
         data = response.json()
 
@@ -209,6 +209,7 @@ class AdvancedMealItemHandler:
         return ingredients_meta
     
     def calculate_calories_by_meal_name(self, data, input_type):
+        ## Fix issue with covnesion factor and make it dymanic for serving size on ingriditents level.
         if input_type == 'image':
             idetified_meal = self.indetify_meal(data = '', image = data)
         else:
