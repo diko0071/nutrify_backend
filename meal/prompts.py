@@ -316,7 +316,9 @@ Example, if initail ingridient milk, then DO NOT need to choose cheese. You MUST
 ```
 
 
-Consider and prefer more options that have more nutrients filled and make sense.
+Consider and prefer more options that have more nutrients filled and make sense. And ONLY signle one. ONLY signle description. 
 
 You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.
+
+It is MUST be only JSON and only description. 
 """
