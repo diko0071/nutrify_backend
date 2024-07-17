@@ -50,7 +50,7 @@ def openai_call(human_message, system_message, user, image_url=None):
                 },
             ],
         )
-        response = chat.invoke(message)
+        response = chat.invoke([message])
         
         return response.content
 
@@ -123,15 +123,20 @@ class AdvancedMealItemHandler:
     def __init__(self, user):
         self.user = user
 
-    def indetify_meal(self, data, image = None):
-        if image is None:
-            response = openai_call(str(data), meal_item_identifiyer_prompt, self.user)
-        else:
-            response = openai_call('', meal_item_identifiyer_prompt, self.user, image_url=image)
-            print(response)
+    def indetify_meal_by_description(self, data):
+        response = openai_call(str(data), meal_item_identifiyer_prompt, self.user)
         try:
             response_json = json.loads(response)
         
+        except json.JSONDecodeError as e:
+            return f'Error decoding JSON: {e}'
+
+        return response_json
+    
+    def indetify_meal_by_image(self, image):
+        response = openai_call('', meal_item_identifiyer_prompt, self.user, image_url=image)
+        try:
+            response_json = json.loads(response)
         except json.JSONDecodeError as e:
             return f'Error decoding JSON: {e}'
 
@@ -262,60 +267,93 @@ class AdvancedMealItemHandler:
 
         return ingredients_meta
     
-    def calculate_calories_by_meal_name(self, data, input_type):
+    def calculate_calories_by_meal_name(self, data, input_type, meal_id, image=None):
         if input_type == 'image':
-            idetified_meal = self.indetify_meal(data = '', image = data)
+            identified_meals = self.indetify_meal_by_image(data)
         else:
-            idetified_meal = self.indetify_meal(data)
+            identified_meals = self.indetify_meal_by_description(data)
         
-        meal_name = idetified_meal['meal_name']
-        serving_size = idetified_meal['serving_size']
-        ingredients = self.decompose_ingredients(meal_name, serving_size)['ingredients']
+        meal_summaries = []
+        meal_items = []
+        print(identified_meals)
 
-        total_nutrients = {}
-        ingredients_list = []
+        for meal in identified_meals:
+            meal_name = meal['meal_name']
+            serving_size = meal['serving_size']
+            ingredients = self.decompose_ingredients(meal_name, serving_size)['ingredients']
 
-        for ingredient in ingredients:
-            ingredient_name = ingredient['ingredient']
-            desired_serving_size = ingredient['servingSize']
-            ingredient_meta = self.retrieve_and_convert_ingredients_meta(ingredient_name, desired_serving_size)
-            
-            if 'missing' in ingredient_meta and ingredient_meta['missing']:
-                missing_ingredient_data = openai_call(f'Ingredient: {ingredient_name}, serving size: {desired_serving_size}', missing_ingredient_prompt, self.user)
-                try:
-                    missing_ingredient_data_json = json.loads(missing_ingredient_data)
-                except json.JSONDecodeError as e:
-                    return f'Error decoding JSON: {e}'
+            total_nutrients = {}
+            ingredients_list = []
+
+            for ingredient in ingredients:
+                ingredient_name = ingredient['ingredient']
+                desired_serving_size = ingredient['servingSize']
+                ingredient_meta = self.retrieve_and_convert_ingredients_meta(ingredient_name, desired_serving_size)
                 
-                ingredient_meta = {ingredient_name: missing_ingredient_data_json}
-                ingredient_meta[ingredient_name]['missing'] = True
+                if 'missing' in ingredient_meta and ingredient_meta['missing']:
+                    missing_ingredient_data = openai_call(f'Ingredient: {ingredient_name}, serving size: {desired_serving_size}', missing_ingredient_prompt, self.user)
+                    try:
+                        missing_ingredient_data_json = json.loads(missing_ingredient_data)
+                    except json.JSONDecodeError as e:
+                        return f'Error decoding JSON: {e}'
+                    
+                    ingredient_meta = {ingredient_name: missing_ingredient_data_json}
+                    ingredient_meta[ingredient_name]['missing'] = True
 
-            for meta in ingredient_meta.values():
-                ingredients_list.append({
-                    'ingredient': ingredient_name,
-                    'description': meta['description'],
-                    'servingSizeUnit': meta['servingSizeUnit'],
-                    'desiredServingSize': meta['desiredServingSize'],
-                    'foodCategory': meta['foodCategory'],
-                    'nutrients': meta['nutrients'],
-                    'missing': meta.get('missing', False)
-                })
+                for meta in ingredient_meta.values():
+                    ingredients_list.append({
+                        'ingredient': ingredient_name,
+                        'description': meta['description'],
+                        'servingSizeUnit': meta['servingSizeUnit'],
+                        'desiredServingSize': meta['desiredServingSize'],
+                        'foodCategory': meta['foodCategory'],
+                        'nutrients': meta['nutrients'],
+                        'missing': meta.get('missing', False)
+                    })
 
-                for nutrient in meta['nutrients']:
-                    nutrient_name = nutrient['nutrientName']
-                    desired_value = nutrient['desiredValue']
+                    for nutrient in meta['nutrients']:
+                        nutrient_name = nutrient['nutrientName']
+                        desired_value = nutrient['desiredValue']
 
-                    if nutrient_name not in total_nutrients:
-                        total_nutrients[nutrient_name] = 0
+                        if nutrient_name not in total_nutrients:
+                            total_nutrients[nutrient_name] = 0
 
-                    total_nutrients[nutrient_name] += desired_value
+                        total_nutrients[nutrient_name] += desired_value
 
-        meal_summary = {
-            'meal_name': meal_name,
-            'servingSize': serving_size,
-            'ingredients': ingredients,
-            'total_nutrients': total_nutrients,
-            'ingredients_details': ingredients_list
-        }
+            meal_summary = {
+                'meal_name': meal_name,
+                'servingSize': serving_size,
+                'ingredients': ingredients,
+                'total_nutrients': total_nutrients,
+                'ingredients_details': ingredients_list
+            }
 
-        return meal_summary
+            meal_summaries.append(meal_summary)
+            if input_type == 'image':
+                meal_item = MealItem.objects.create(
+                    user=self.user,
+                    name=meal_name,
+                    image=image,
+                    servings=meal_summary["servingSize"],
+                    calories=meal_summary["total_nutrients"]["Energy (Atwater General Factors)"],
+                    proteins=meal_summary["total_nutrients"]["Protein"],
+                    carbs=meal_summary["total_nutrients"]["Carbohydrate, by difference"],
+                    fats=meal_summary["total_nutrients"]["Total lipid (fat)"],
+                    meal_id=meal_id
+                )
+                meal_items.append(meal_item)
+            else:
+                meal_item = MealItem.objects.create(
+                    user=self.user,
+                    name=meal_name,
+                    description=data,
+                    servings=meal_summary["servingSize"],
+                    calories=meal_summary["total_nutrients"]["Energy (Atwater General Factors)"],
+                    proteins=meal_summary["total_nutrients"]["Protein"],
+                    carbs=meal_summary["total_nutrients"]["Carbohydrate, by difference"],
+                    fats=meal_summary["total_nutrients"]["Total lipid (fat)"],
+                    meal_id=meal_id
+                )
+                meal_items.append(meal_item)
+        
+        return meal_items

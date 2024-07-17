@@ -98,10 +98,26 @@ Based on picture or description you MUST generate meal name and approximate meal
 
 Answer MUST be in format: 
 ```
+[
 {
     "meal_name": [Value based on dish name],
     "serving_size": [Value int in grams (like 400, 500, 600, etc.) based on dish name]
 }
+]
+```
+
+You also avlaible to generate and identify more than 1 meal at the time:
+```
+[
+{
+    "meal_name": [Value based on dish name],
+    "serving_size": [Value int in grams (like 400, 500, 600, etc.) based on dish name]
+},
+{
+    "meal_name": [Value based on dish name],
+    "serving_size": [Value int in grams (like 400, 500, 600, etc.) based on dish name]
+}
+]
 ```
 
 You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.

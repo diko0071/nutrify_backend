@@ -18,15 +18,29 @@ from django.core.files.base import ContentFile
 def get_recipe(request):
     user = request.user
     model = AdvancedMealItemHandler(user)
-    data = request.data
+    data = request.data.get('data')
+    date = request.data.get('date')
+    date = datetime.strptime(date, '%Y-%m-%d')
     input_type = 'description'
+    meal_category = request.data.get('meal_category')
+
+    try:
+        meal = Meal.objects.filter(category=meal_category, user=user, meal_date=date).latest('meal_date')
+    except Meal.DoesNotExist:
+        meal = Meal.objects.create(category=meal_category, user=user, meal_date=date)
+    
     if 'image' in request.data:
        input_type = 'image'
        image = request.FILES.get('image')
-       recipe = model.calculate_calories_by_meal_name(image, input_type)
+       image = default_storage.save(image.name, ContentFile(image.read()))
+       image_url = default_storage.url(image)
+       recipe = model.calculate_calories_by_meal_name(image_url, input_type, meal, image)
+       serialized_meal_item = MealItemSerializer(recipe, many=True)
+       return Response(serialized_meal_item.data)
     else:
-        recipe = model.calculate_calories_by_meal_name(data, input_type)
-    return Response(recipe)
+        recipe = model.calculate_calories_by_meal_name(data, input_type, meal)
+        serialized_meal_item = MealItemSerializer(recipe, many=True)
+        return Response(serialized_meal_item.data)
 
 
 @api_view(['GET'])
