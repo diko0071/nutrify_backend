@@ -34,11 +34,11 @@ def get_recipe(request):
        image = request.FILES.get('image')
        image = default_storage.save(image.name, ContentFile(image.read()))
        image_url = default_storage.url(image)
-       recipe = model.calculate_calories_by_meal_name(image_url, input_type, meal, image)
+       recipe = model.calculate_calories_by_meal_name(image_url, input_type, meal, image, 'production')
        serialized_meal_item = MealItemSerializer(recipe, many=True)
        return Response(serialized_meal_item.data)
     else:
-        recipe = model.calculate_calories_by_meal_name(data, input_type, meal)
+        recipe = model.calculate_calories_by_meal_name(data, input_type, meal, None, 'production')
         serialized_meal_item = MealItemSerializer(recipe, many=True)
         return Response(serialized_meal_item.data)
 

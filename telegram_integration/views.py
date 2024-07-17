@@ -7,7 +7,7 @@ import json
 from useraccount.models import User
 from meal.models import Meal, MealItem
 from meal.views import MealItemSerializer
-from meal.services import MealItemHandler
+from meal.services import AdvancedMealItemHandler
 from dotenv import load_dotenv
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -77,7 +77,7 @@ def log_weight_telegram(user, date, weight):
 def create_meal_item_telegram(user, date, meal_category, description=None, image=None):
     date = datetime.strptime(date, '%Y-%m-%d')
     
-    model = MealItemHandler(user)
+    model = AdvancedMealItemHandler(user)
 
     try:
         meal = Meal.objects.filter(category=meal_category, user=user, meal_date=date).latest('meal_date')
@@ -88,10 +88,11 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
     try:
         if image and not description:
+            input_type = 'image'
             filename, file_content = download_telegram_photo(image)
             saved_path, image_url = save_file_to_storage(filename, file_content)
 
-            meal_item = model.generate_meal_item_by_picture(image_url, saved_path, meal)
+            meal_item = model.calculate_calories_by_meal_name(image_url, input_type, meal, saved_path, 'production')
             serialized_meal_items = MealItemSerializer(meal_item, many=True)
             
             meal_details = []
@@ -110,7 +111,8 @@ def create_meal_item_telegram(user, date, meal_category, description=None, image
 
     try:
         if description and not image_url:
-            meal_item = model.generate_meal_item_by_description(description, meal)
+            input_type = 'description'
+            meal_item = model.calculate_calories_by_meal_name(description, input_type, meal, None, 'production')
             serialized_meal_items = MealItemSerializer(meal_item, many=True)
             meal_details = []
             total_calories = 0

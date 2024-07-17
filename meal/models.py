@@ -44,5 +44,8 @@ class Prompts(models.Model):
     system_message = models.TextField()
     user_message = models.TextField()
     response = models.TextField()
+    cost = models.DecimalField(max_digits=10, decimal_places=10)
+    input_tokens = models.PositiveIntegerField(null=True, blank=True)
+    output_tokens = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)  
     updated_at = models.DateTimeField(auto_now=True)  

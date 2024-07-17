@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import os 
 from .models import Prompts, MealItem
@@ -9,6 +9,7 @@ import base64
 import httpx
 from .models import Meal
 from vector_store.services import VectorStoreActions
+from langchain_community.callbacks import get_openai_callback
 
 usda_api_key = os.getenv("USDA_API_KEY")
 
@@ -16,42 +17,38 @@ vector_action = VectorStoreActions()
 
 
 def openai_call(human_message, system_message, user, image_url=None):
-    
+    from langchain_community.callbacks import get_openai_callback
+
     llm = ChatOpenAI(model_name="gpt-4o-2024-05-13", temperature=0, api_key=os.getenv("OPENAI_API_KEY"))
     chat = llm
-    
-    if image_url is None:
-        messages = [
-            SystemMessage(
-        content=f'{system_message}.'
-    ),
-        HumanMessage(content=human_message),
+
+    with get_openai_callback() as cb:
+        if image_url is None:
+            messages = [
+                SystemMessage(content=f'{system_message}.'),
+                HumanMessage(content=human_message),
             ]
-        
-        response = chat.invoke(messages)
+            response = chat.invoke(messages)
+        else:
+            image_data = base64.b64encode(httpx.get(image_url).content).decode("utf-8")
+            message = HumanMessage(
+                content=[
+                    {"type": "text", "text": system_message},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}},
+                ],
+            )
+            response = chat.invoke([message])
 
         Prompts.objects.create(
             user=user,
             system_message=system_message,
             user_message=human_message,
-            response=response.content
+            response=response.content,
+            cost=cb.total_cost,
+            input_tokens=cb.prompt_tokens,
+            output_tokens=cb.completion_tokens
         )
 
-        return response.content 
-    
-    else:
-        image_data = base64.b64encode(httpx.get(image_url).content).decode("utf-8")
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": system_message},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
-                },
-            ],
-        )
-        response = chat.invoke([message])
-        
         return response.content
 
 
@@ -267,7 +264,7 @@ class AdvancedMealItemHandler:
 
         return ingredients_meta
     
-    def calculate_calories_by_meal_name(self, data, input_type, meal_id, image=None):
+    def calculate_calories_by_meal_name(self, data, input_type, meal_id, image=None, environment=None):
         if input_type == 'image':
             identified_meals = self.indetify_meal_by_image(data)
         else:
@@ -275,7 +272,6 @@ class AdvancedMealItemHandler:
         
         meal_summaries = []
         meal_items = []
-        print(identified_meals)
 
         for meal in identified_meals:
             meal_name = meal['meal_name']
@@ -355,5 +351,7 @@ class AdvancedMealItemHandler:
                     meal_id=meal_id
                 )
                 meal_items.append(meal_item)
-        
-        return meal_items
+        if environment == 'production':
+            return meal_items
+        else:
+            return meal_summary

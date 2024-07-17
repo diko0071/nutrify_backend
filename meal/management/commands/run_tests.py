@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
         def generate_mealitem_meta(question):
             model = AdvancedMealItemHandler(user)
-            recipe = model.calculate_calories_by_meal_name(question, 'description')
+            recipe = model.calculate_calories_by_meal_name(data=question, input_type='description', meal_id=None, image=None, environment='test')
 
             result = {
                 "meal_name": recipe.get("meal_name", ""),
