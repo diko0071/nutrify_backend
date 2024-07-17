@@ -237,14 +237,16 @@ class AdvancedMealItemHandler:
                 
         conversion_factor = desired_serving_size / default_serving_size
 
+        required_nutrients = [
+            'Energy (Atwater General Factors)', 
+            'Energy (Atwater Specific Factors)', 
+            'Protein', 
+            'Carbohydrate, by difference', 
+            'Total lipid (fat)'
+        ]
+
         for nutrient_name, values in nutrients_data.items():
-            if nutrient_name in [
-                'Energy (Atwater General Factors)', 
-                'Energy (Atwater Specific Factors)', 
-                'Protein', 
-                'Carbohydrate, by difference', 
-                'Total lipid (fat)'
-            ]:
+            if nutrient_name in required_nutrients:
                 if values: 
                     values = np.array(values)  
                     mean_value = np.mean(values)  
@@ -259,6 +261,10 @@ class AdvancedMealItemHandler:
                         'originalValue': round(mean_value, 2),
                         'desiredValue': round(converted_value, 2)
                     })
+
+        for required_nutrient in required_nutrients:
+            if not any(nutrient['nutrientName'] == required_nutrient for nutrient in food_info['nutrients']):
+                return {'missing': True, 'ingredient': ingredient, 'desired_serving_size': desired_serving_size}
 
         ingredients_meta[ingredient] = food_info
 
@@ -352,6 +358,8 @@ class AdvancedMealItemHandler:
                 )
                 meal_items.append(meal_item)
         if environment == 'production':
+            print(meal_summaries)
             return meal_items
         else:
             return meal_summary
+        

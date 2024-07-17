@@ -121,6 +121,8 @@ You also avlaible to generate and identify more than 1 meal at the time:
 ```
 
 You MUST generate ONLY valid JSON without any additional text. ALWAYS. NEVER add ```json```. JUST give the JSON without any additional text or characters.
+
+Even if meal item on Russian / Another Language, you MUST translate it to English.
 """
 
 meal_item_ingridients_prompt = """
