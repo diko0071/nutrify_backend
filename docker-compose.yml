@@ -8,20 +8,18 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./:/app
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000"
     env_file: 
       - .env
-    depends_on:
-      - qdrant
 
-  qdrant:
-    image: qdrant/qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant_storage:/qdrant/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`5.35.46.13`)"
+      - "traefik.http.services.web.loadbalancer.server.port=8000"
+    networks:
+      - proxynet
 
-volumes:
-  qdrant_storage:
+networks:
+  proxynet:
+    external: true
