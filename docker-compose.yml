@@ -15,11 +15,37 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`5.35.46.13`)"
+      - "traefik.http.routers.web.rule=Host(`nutrify.work`) || Host(`www.nutrify.work`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=myresolver"
       - "traefik.http.services.web.loadbalancer.server.port=8000"
     networks:
       - proxynet
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME:-nutrify}
+      - POSTGRES_USER=${DB_USER:-nutrify_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - proxynet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nutrify_user} -d ${DB_NAME:-nutrify}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 networks:
   proxynet:
     external: true
+
+
+volumes:
+  postgres_data:
