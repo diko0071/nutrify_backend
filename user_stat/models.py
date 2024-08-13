@@ -10,6 +10,7 @@ class UserGoals(models.TextChoices):
 class UserGender(models.TextChoices):
     Male = "Male", "Male"
     Female = "Female", "Female"
+    Other = "Other", "Other"
 
 class UserActivityLevel(models.TextChoices):
     Sedentary = "Sedentary", "Sedentary"
@@ -94,6 +95,7 @@ class WeightLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
     weight = models.FloatField()
+    goal_completed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username} - {self.timestamp}: {self.weight} kg"
+        return f"{self.user.username} - {self.timestamp}: {self.weight} kg, Goal Completed: {self.goal_completed}"
