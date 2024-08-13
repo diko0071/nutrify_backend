@@ -12,6 +12,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=korzhov.work2019@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.web.http.middlewares=redirect-to-https@docker"
     ports:
       - "80:80"
       - "443:443"
