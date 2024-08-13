@@ -31,6 +31,9 @@ class UserMetrics(models.Model):
     daily_protein_goal = models.IntegerField(blank=True, null=True)
     daily_carb_goal = models.IntegerField(blank=True, null=True)
     daily_fat_goal = models.IntegerField(blank=True, null=True)
+    openai_key = models.CharField(max_length=255, blank=True, null=True)
+    goals_completed = models.IntegerField(blank=True, null=True)
+
 
 
     def calculate_age(self):
